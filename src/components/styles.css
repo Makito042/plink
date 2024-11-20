@@ -1,0 +1,12 @@
+.profile-dropdown {
+  transition: opacity 0.3s ease, visibility 0s linear 2s;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.profile-dropdown:hover,
+.profile-group:hover .profile-dropdown {
+  transition-delay: 0s;
+  opacity: 1;
+  visibility: visible;
+}
