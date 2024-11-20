@@ -1,10 +1,12 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import authRoutes from './routes/auth.js';
-import { createServer } from 'http';
+import adminRoutes from './routes/admin.js';
+import userRoutes from './routes/users.js';
 
 dotenv.config();
 
@@ -12,65 +14,63 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
+const port = process.env.PORT || 5001;
 
-// CORS configuration
+// MongoDB Connection with retry logic
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGODB_URI);
+    console.log('MongoDB Connected successfully!');
+    console.log(`Database: ${conn.connection.name}`);
+    console.log(`Host: ${conn.connection.host}`);
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    // Retry connection after 5 seconds
+    setTimeout(connectDB, 5000);
+  }
+};
+
+// Initial connection attempt
+connectDB();
+
+// Handle MongoDB connection events
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected! Attempting to reconnect...');
+  setTimeout(connectDB, 5000);
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('MongoDB connection error:', err);
+});
+
+// Middleware
 app.use(cors({
-  origin: 'http://localhost:5173', // Vite's default port
+  origin: 'http://localhost:5173',
   credentials: true
 }));
-
 app.use(express.json());
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/users', userRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(join(__dirname, '../dist')));
+
+  app.get('*', (req, res) => {
+    res.sendFile(join(__dirname, '../dist/index.html'));
+  });
 }
 
-// Handle client-side routing
-app.get('*', (req, res) => {
-  if (req.url.startsWith('/api')) {
-    res.status(404).json({ message: 'API endpoint not found' });
-  } else if (process.env.NODE_ENV === 'production') {
-    res.sendFile(join(__dirname, '../dist/index.html'));
-  } else {
-    res.redirect('http://localhost:5173' + req.url);
-  }
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!' });
 });
 
-const startServer = (port) => {
-  return new Promise((resolve, reject) => {
-    const server = createServer(app);
-    
-    server.on('error', (error) => {
-      if (error.code === 'EADDRINUSE') {
-        console.log(`Port ${port} is in use, trying ${port + 1}`);
-        resolve(startServer(port + 1));
-      } else {
-        reject(error);
-      }
-    });
-
-    server.listen(port, () => {
-      console.log(`Server running on port ${port}`);
-      resolve(server);
-    });
-  });
-};
-
-const PORT = process.env.PORT || 5001;
-
-try {
-  const server = await startServer(PORT);
-  
-  process.on('SIGTERM', () => {
-    server.close(() => {
-      console.log('Server closed');
-    });
-  });
-} catch (error) {
-  console.error('Failed to start server:', error);
-  process.exit(1);
-}
+// Start server
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});

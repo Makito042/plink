@@ -1,24 +1,36 @@
 import jwt from 'jsonwebtoken';
-import { db } from '../db/inMemoryDb.js';
+import User from '../models/User.js';
 
 export const auth = async (req, res, next) => {
   try {
+    // Get token from header
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+
     if (!token) {
-      return res.status(401).json({ message: 'Authentication required' });
+      return res.status(401).json({ message: 'No token, authorization denied' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret');
-    const user = db.users.get(decoded.userId);
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Get user from database
+    const user = await User.findById(decoded.id).select('-password');
     
     if (!user) {
-      return res.status(401).json({ message: 'User not found' });
+      return res.status(401).json({ message: 'Token is not valid' });
     }
 
-    req.userId = decoded.userId;
+    req.user = user;
     next();
-  } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
+  } catch (err) {
+    res.status(401).json({ message: 'Token is not valid' });
+  }
+};
+
+export const requireAdmin = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Access denied. Admin role required.' });
   }
 };

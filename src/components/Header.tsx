@@ -7,7 +7,7 @@ import './styles.css';
 export default function Header() {
   const navigate = useNavigate();
   const { items } = useCart();
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, user } = useAuth();
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleLogout = () => {
@@ -76,6 +76,11 @@ export default function Header() {
                     <Link to="/dashboard/orders" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
                       Orders
                     </Link>
+                    {user?.role === 'admin' && (
+                      <Link to="/admin" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                        Admin Console
+                      </Link>
+                    )}
                     <button 
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100"
