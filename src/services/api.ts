@@ -60,7 +60,7 @@ export async function fetchProfile() {
     const response = await fetch(`${API_URL}/users/profile`, {
       headers: {
         ...getAuthHeader(),
-      },
+      } as HeadersInit,
     });
 
     if (!response.ok) {
@@ -90,7 +90,7 @@ export async function updateProfile(data: {
       headers: {
         'Content-Type': 'application/json',
         ...getAuthHeader(),
-      },
+      } as HeadersInit,
       body: JSON.stringify(data),
     });
 
