@@ -2,12 +2,14 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Footer from './components/Footer';
 import Header from './components/Header';
 import ProtectedRoute from './components/ProtectedRoute';
+import RoleBasedRoute from './components/RoleBasedRoute';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { OrderProvider } from './context/OrderContext';
 import About from './pages/About';
 import AdminConsole from './pages/AdminConsole';
 import AdminRegister from './pages/AdminRegister';
+import AdminLogin from './pages/AdminLogin';
 import Cart from './pages/Cart';
 import Category from './pages/Category';
 import Checkout from './pages/Checkout';
@@ -15,61 +17,92 @@ import Contact from './pages/Contact';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import Register from './pages/auth/Register';
 import ProductDetail from './pages/ProductDetail';
 import Profile from './pages/Profile';
-import Signup from './pages/Signup';
 import DashboardProfile from './pages/DashboardProfile';
 import DashboardPayments from './pages/DashboardPayments';
 import DashboardSettings from './pages/DashboardSettings';
+import UserManagement from './pages/admin/UserManagement';
+import Settings from './pages/admin/Settings';
+import SystemLogs from './pages/admin/SystemLogs';
+import ErrorBoundary from './components/ErrorBoundary';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <CartProvider>
-        <OrderProvider>
-          <Router>
-            <div className="flex flex-col min-h-screen">
-              <Header />
-              <main className="flex-grow">
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/signup" element={<Signup />} />
-                  <Route path="/admin-register" element={<AdminRegister />} />
-                  <Route path="/category/:category" element={<Category />} />
-                  <Route path="/product/:id" element={<ProductDetail />} />
-                  
-                  {/* Protected Routes */}
-                  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                  <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-                  
-                  {/* Dashboard Routes */}
-                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>}>
-                    <Route index element={<div>Orders Dashboard</div>} />
-                    <Route path="profile" element={<DashboardProfile />} />
-                    <Route path="payments" element={<DashboardPayments />} />
-                    <Route path="settings" element={<DashboardSettings />} />
-                  </Route>
-                  
-                  {/* Admin Routes */}
-                  <Route
-                    path="/admin"
-                    element={
-                      <ProtectedRoute requireAdmin>
-                        <AdminConsole />
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <CartProvider>
+            <OrderProvider>
+              <div className="flex flex-col min-h-screen">
+                <Header />
+                <main className="flex-grow">
+                  <Routes>
+                    {/* Public Routes */}
+                    <Route path="/" element={<Home />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/admin/login" element={<AdminLogin />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/category/:category" element={<Category />} />
+                    <Route path="/product/:id" element={<ProductDetail />} />
+                    
+                    {/* Protected Routes */}
+                    <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
+                    <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                    <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+                    
+                    {/* Customer Routes */}
+                    <Route path="/dashboard" element={
+                      <ProtectedRoute>
+                        <Dashboard />
                       </ProtectedRoute>
-                    }
-                  />
-                </Routes>
-              </main>
-              <Footer />
-            </div>
-          </Router>
-        </OrderProvider>
-      </CartProvider>
-    </AuthProvider>
+                    }>
+                      {/* Customer Routes */}
+                      <Route path="profile" element={<DashboardProfile />} />
+                      <Route path="payments" element={<DashboardPayments />} />
+                      <Route path="settings" element={<DashboardSettings />} />
+                      
+                      {/* Vendor Routes */}
+                      <Route path="orders" element={
+                        <RoleBasedRoute allowedRoles={['vendor', 'admin']}>
+                          <div>Vendor Orders</div>
+                        </RoleBasedRoute>
+                      } />
+                      <Route path="inventory" element={
+                        <RoleBasedRoute allowedRoles={['vendor', 'admin']}>
+                          <div>Inventory Management</div>
+                        </RoleBasedRoute>
+                      } />
+                    </Route>
+
+                    {/* Admin Routes */}
+                    <Route path="/admin" element={
+                      <RoleBasedRoute allowedRoles={['admin', 'superadmin']} redirectTo="/dashboard">
+                        <AdminConsole />
+                      </RoleBasedRoute>
+                    }>
+                      <Route path="users" element={<UserManagement />} />
+                      <Route path="settings" element={<Settings />} />
+                      <Route path="logs" element={<SystemLogs />} />
+                    </Route>
+
+                    {/* Admin Registration (Superadmin Only) */}
+                    <Route path="/admin-register" element={
+                      <RoleBasedRoute allowedRoles={['superadmin']} redirectTo="/admin">
+                        <AdminRegister />
+                      </RoleBasedRoute>
+                    } />
+                  </Routes>
+                </main>
+                <Footer />
+              </div>
+            </OrderProvider>
+          </CartProvider>
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }

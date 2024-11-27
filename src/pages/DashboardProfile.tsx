@@ -37,11 +37,8 @@ const DashboardProfile: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      console.log('Fetching profile...');
       const data = await fetchProfile();
-      console.log('Profile data:', data);
       setProfile(data);
-      updateUser(data);
       setFormData(prev => ({
         ...prev,
         name: data.name,
@@ -49,58 +46,53 @@ const DashboardProfile: React.FC = () => {
       }));
     } catch (err) {
       console.error('Error fetching profile:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load profile');
+      setError('Failed to load profile data. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-    setError('');
-    setSuccess('');
-  };
-
-  const resetForm = () => {
-    if (profile) {
-      setFormData({
-        name: profile.name,
-        email: profile.email,
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
-    }
-    setIsEditing(false);
-    setError('');
-    setSuccess('');
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (formData.newPassword && formData.newPassword !== formData.confirmPassword) {
-      setError('New passwords do not match');
-      return;
-    }
+    if (!profile) return;
 
     try {
-      const updatedUser = await updateProfile({
-        name: formData.name,
-        email: formData.email,
-        currentPassword: formData.currentPassword,
-        newPassword: formData.newPassword
-      });
+      setError('');
+      setSuccess('');
 
-      setProfile(updatedUser);
-      updateUser(updatedUser);
-      setSuccess('Profile updated successfully!');
-      resetForm();
+      if (formData.newPassword && formData.newPassword !== formData.confirmPassword) {
+        setError('New passwords do not match');
+        return;
+      }
+
+      const updateData = {
+        name: formData.name !== profile.name ? formData.name : undefined,
+        email: formData.email !== profile.email ? formData.email : undefined,
+        currentPassword: formData.currentPassword || undefined,
+        newPassword: formData.newPassword || undefined
+      };
+
+      const updatedProfile = await updateProfile(updateData);
+      setProfile(updatedProfile);
+      updateUser(updatedProfile);
+      setSuccess('Profile updated successfully');
+      setIsEditing(false);
+      
+      // Clear password fields
+      setFormData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      }));
     } catch (err) {
       console.error('Error updating profile:', err);
       setError(err instanceof Error ? err.message : 'Failed to update profile');
@@ -109,83 +101,42 @@ const DashboardProfile: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-red-600 flex items-center">
-          <AlertCircle className="w-5 h-5 mr-2" />
-          Failed to load profile data
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
-        <div className="flex items-center space-x-2">
-          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
-            ${profile.status === 'active' 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-red-100 text-red-800'}`}>
-            {profile.status === 'active' ? (
-              <ShieldCheck className="w-4 h-4 mr-1" />
-            ) : (
-              <AlertCircle className="w-4 h-4 mr-1" />
-            )}
-            {profile.status.charAt(0).toUpperCase() + profile.status.slice(1)}
-          </span>
-          {profile.role === 'admin' && (
-            <span className="bg-purple-100 text-purple-800 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium">
-              Admin
-            </span>
+    <div className="max-w-4xl mx-auto p-6">
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-semibold text-gray-800">Profile Settings</h2>
+          {!isEditing && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary-dark"
+            >
+              Edit Profile
+            </button>
           )}
         </div>
-      </div>
 
-      {error && (
-        <div className="mb-4 bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-          <span className="block sm:inline">{error}</span>
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-4 bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded relative">
-          <span className="block sm:inline">{success}</span>
-        </div>
-      )}
-
-      {/* Account Info */}
-      <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">
-          Account Information
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-gray-500">Member since:</span>
-            <span className="ml-2 text-gray-900">
-              {formatDistanceToNow(new Date(profile.createdAt), { addSuffix: true })}
-            </span>
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md flex items-center text-red-700">
+            <AlertCircle className="w-5 h-5 mr-2" />
+            {error}
           </div>
-          <div>
-            <span className="text-gray-500">Last login:</span>
-            <span className="ml-2 text-gray-900">
-              {formatDistanceToNow(new Date(profile.lastLogin), { addSuffix: true })}
-            </span>
-          </div>
-        </div>
-      </div>
+        )}
 
-      {/* Profile Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 gap-6">
+        {success && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md flex items-center text-green-700">
+            <ShieldCheck className="w-5 h-5 mr-2" />
+            {success}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700">Name</label>
             <input
@@ -194,9 +145,12 @@ const DashboardProfile: React.FC = () => {
               value={formData.name}
               onChange={handleInputChange}
               disabled={!isEditing}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 disabled:bg-gray-100"
+              className={`mt-1 block w-full rounded-md ${
+                isEditing ? 'bg-white border-gray-300' : 'bg-gray-50 border-gray-200'
+              } shadow-sm focus:border-primary focus:ring-primary sm:text-sm`}
             />
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700">Email</label>
             <input
@@ -205,84 +159,111 @@ const DashboardProfile: React.FC = () => {
               value={formData.email}
               onChange={handleInputChange}
               disabled={!isEditing}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 disabled:bg-gray-100"
+              className={`mt-1 block w-full rounded-md ${
+                isEditing ? 'bg-white border-gray-300' : 'bg-gray-50 border-gray-200'
+              } shadow-sm focus:border-primary focus:ring-primary sm:text-sm`}
             />
           </div>
-        </div>
 
-        {isEditing && (
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Current Password
-              </label>
-              <input
-                type="password"
-                name="currentPassword"
-                value={formData.currentPassword}
-                onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {isEditing && (
+            <>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  New Password
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Current Password</label>
+                <input
+                  type="password"
+                  name="currentPassword"
+                  value={formData.currentPassword}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">New Password</label>
                 <input
                   type="password"
                   name="newPassword"
                   value={formData.newPassword}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                 />
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Confirm New Password
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
                 <input
                   type="password"
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                 />
               </div>
-            </div>
-          </div>
-        )}
+            </>
+          )}
 
-        <div className="flex justify-end space-x-3">
-          {!isEditing ? (
-            <button
-              type="button"
-              onClick={() => setIsEditing(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
-              Edit Profile
-            </button>
-          ) : (
-            <>
+          {isEditing && (
+            <div className="flex justify-end space-x-4">
               <button
                 type="button"
-                onClick={resetForm}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                onClick={() => {
+                  setIsEditing(false);
+                  setError('');
+                  setSuccess('');
+                  if (profile) {
+                    setFormData({
+                      name: profile.name,
+                      email: profile.email,
+                      currentPassword: '',
+                      newPassword: '',
+                      confirmPassword: ''
+                    });
+                  }
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               >
-                <X className="w-4 h-4 mr-2" />
                 Cancel
               </button>
               <button
                 type="submit"
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary-dark"
               >
-                <Save className="w-4 h-4 mr-2" />
                 Save Changes
               </button>
-            </>
+            </div>
           )}
-        </div>
-      </form>
+
+          {profile && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Account Information</h3>
+              <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Account Type</dt>
+                  <dd className="mt-1 text-sm text-gray-900 capitalize">{profile.role}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Status</dt>
+                  <dd className="mt-1 text-sm text-gray-900 capitalize">{profile.status}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Member Since</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {new Date(profile.createdAt).toLocaleDateString()}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Last Login</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {profile.lastLogin
+                      ? formatDistanceToNow(new Date(profile.lastLogin), { addSuffix: true })
+                      : 'Never'}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          )}
+        </form>
+      </div>
     </div>
   );
 };

@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Component-specific styles only */
+/* All Tailwind utilities and components are now in index.css */
 
 @layer components {
   .form-input {
@@ -54,17 +53,86 @@
   .admin-badge {
     @apply status-badge bg-purple-100 text-purple-800;
   }
+  
+  .role-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .role-badge-admin {
+    @apply role-badge bg-blue-100 text-blue-800;
+  }
+
+  .role-badge-user {
+    @apply role-badge bg-gray-100 text-gray-800;
+  }
+
+  .role-badge-superadmin {
+    @apply role-badge bg-purple-100 text-purple-800;
+  }
+}
+
+/* Add dropdown menu styles */
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 0.5rem;
+  width: 12rem;
+  background-color: white;
+  border-radius: 0.375rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out, visibility 0s linear 0.15s;
+}
+
+.dropdown-container {
+  position: relative;
+}
+
+.dropdown-container:hover .dropdown-menu,
+.dropdown-menu:hover {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out, visibility 0s linear 0s;
+}
+
+.dropdown-item {
+  display: block;
+  padding: 0.5rem 1rem;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.dropdown-item:hover {
+  background-color: #F3F4F6;
 }
 
 .profile-dropdown {
-  transition: opacity 0.3s ease, visibility 0s linear 2s;
+  transition: opacity 0.2s ease, visibility 0s linear 5s;
   opacity: 0;
   visibility: hidden;
 }
 
 .profile-dropdown:hover,
 .profile-group:hover .profile-dropdown {
-  transition-delay: 0s;
+  transition: opacity 0.2s ease, visibility 0s;
   opacity: 1;
   visibility: visible;
+}
+
+/* Dropdown hover behavior */
+.group:hover > div {
+  display: block;
+  pointer-events: auto;
+}
+
+.group > div {
+  pointer-events: none;
+}
+
+.group > div:hover {
+  pointer-events: auto;
 }

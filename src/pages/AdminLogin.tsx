@@ -4,14 +4,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { login } from '../services/api';
 
-export default function Login() {
+export default function AdminLogin() {
   const navigate = useNavigate();
   const { login: authLogin } = useAuth();
-  const [loginType, setLoginType] = useState<'vendor' | 'customer'>('customer');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    role: 'user' as 'user' | 'vendor'
+    role: 'admin' // Default to admin role
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -22,40 +21,22 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // Update role based on login type
-      const loginData = {
-        ...formData,
-        role: loginType === 'vendor' ? 'vendor' : 'user'
-      };
-
-      console.log('Attempting login with:', { ...loginData, password: '[REDACTED]' });
-      const response = await login(loginData);
+      const response = await login(formData);
       
       if (!response || !response.tokens || !response.tokens.accessToken) {
         throw new Error('Invalid response from server');
       }
 
-      // Check vendor-specific conditions
-      if (response.user.role === 'vendor') {
-        if (response.user.status !== 'active') {
-          throw new Error('Your vendor account is pending approval. Please contact support for more information.');
-        }
-        if (!response.user.storeDetails?.active) {
-          throw new Error('Your store has not been activated yet. Please wait for admin approval.');
-        }
+      // Verify admin/superadmin role
+      if (!['admin', 'superadmin'].includes(response.user.role)) {
+        throw new Error('Access denied. Admin credentials required.');
       }
 
       // Store user data and tokens
       authLogin(response.tokens.accessToken, response.user);
       
-      // Redirect based on user role
-      switch (response.user.role) {
-        case 'vendor':
-          navigate('/dashboard');
-          break;
-        default:
-          navigate('/');
-      }
+      // Redirect to admin dashboard
+      navigate('/admin');
     } catch (err: any) {
       console.error('Login error:', err);
       setError('Invalid email or password. Please try again.');
@@ -76,47 +57,12 @@ export default function Login() {
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Welcome to PharmaLink
+            Admin Portal Login
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to your account
+            Secure access for administrators
           </p>
         </div>
-
-        {/* Login Type Selector */}
-        <div className="flex rounded-md shadow-sm" role="group">
-          <button
-            type="button"
-            onClick={() => {
-              setLoginType('customer');
-              setFormData(prev => ({ ...prev, role: 'user' }));
-              setError('');
-            }}
-            className={`flex-1 py-2 px-4 text-sm font-medium rounded-l-lg border ${
-              loginType === 'customer'
-                ? 'bg-indigo-600 text-white border-indigo-600'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Customer
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setLoginType('vendor');
-              setFormData(prev => ({ ...prev, role: 'vendor' }));
-              setError('');
-            }}
-            className={`flex-1 py-2 px-4 text-sm font-medium rounded-r-lg border ${
-              loginType === 'vendor'
-                ? 'bg-indigo-600 text-white border-indigo-600'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Vendor
-          </button>
-        </div>
-
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded relative" role="alert">
@@ -137,7 +83,7 @@ export default function Login() {
                   autoComplete="email"
                   required
                   className="appearance-none rounded-md relative block w-full px-3 py-2 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                  placeholder={`${loginType === 'vendor' ? 'Vendor' : 'Customer'} email`}
+                  placeholder="Admin email"
                   value={formData.email}
                   onChange={handleChange}
                 />
@@ -173,29 +119,7 @@ export default function Login() {
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
-
-          <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Don't have an account? Register
-              </Link>
-            </div>
-            {loginType === 'vendor' && (
-              <div className="text-sm">
-                <Link to="/vendor/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-                  Register as Vendor
-                </Link>
-              </div>
-            )}
-          </div>
         </form>
-
-        {/* Admin Login Link */}
-        <div className="mt-4 text-center">
-          <Link to="/admin/login" className="text-sm text-gray-600 hover:text-indigo-500">
-            Admin Portal →
-          </Link>
-        </div>
       </div>
     </div>
   );

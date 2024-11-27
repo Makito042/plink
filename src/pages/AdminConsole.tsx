@@ -1,216 +1,194 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Outlet } from 'react-router-dom';
+import { Users, Settings, List, BarChart, DollarSign, Package, Activity } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { fetchAdminStats } from '../services/api';
 
 interface AdminStats {
   totalUsers: number;
   totalOrders: number;
   totalRevenue: number;
   activeUsers: number;
-}
-
-interface AdminActions {
-  label: string;
-  action: () => void;
-  description: string;
+  totalProducts: number;
+  pendingOrders: number;
+  systemHealth: {
+    status: string;
+    lastBackup: string;
+    serverLoad: number;
+    lastError: string | null;
+  };
+  recentActivity: {
+    newUsers: number;
+    recentOrders: number;
+  };
+  userStats: {
+    customers: number;
+    admins: number;
+    inactiveUsers: number;
+  };
 }
 
 const AdminConsole: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalOrders: 0,
     totalRevenue: 0,
     activeUsers: 0,
+    totalProducts: 0,
+    pendingOrders: 0,
+    systemHealth: {
+      status: 'Healthy',
+      lastBackup: '-',
+      serverLoad: 0,
+      lastError: null
+    },
+    recentActivity: {
+      newUsers: 0,
+      recentOrders: 0
+    },
+    userStats: {
+      customers: 0,
+      admins: 0,
+      inactiveUsers: 0
+    }
   });
-  const [selectedUser, setSelectedUser] = useState<string>('');
-  const [users, setUsers] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') {
-      navigate('/');
-      return;
-    }
-    fetchAdminData();
-  }, [user, navigate]);
+    const loadStats = async () => {
+      try {
+        const data = await fetchAdminStats();
+        setStats(data);
+      } catch (error) {
+        console.error('Error fetching admin stats:', error);
+      }
+    };
+    loadStats();
+  }, []);
 
-  const fetchAdminData = async () => {
-    try {
-      const [usersRes, ordersRes, statsRes] = await Promise.all([
-        fetch('/api/admin/users', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }),
-        fetch('/api/admin/orders', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }),
-        fetch('/api/admin/stats', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        })
-      ]);
-
-      const [usersData, ordersData, statsData] = await Promise.all([
-        usersRes.json(),
-        ordersRes.json(),
-        statsRes.json()
-      ]);
-
-      setUsers(usersData);
-      setOrders(ordersData);
-      setStats(statsData);
-    } catch (error) {
-      console.error('Error fetching admin data:', error);
-    }
-  };
-
-  const adminActions: AdminActions[] = [
-    {
-      label: 'Block User',
-      action: async () => {
-        if (!selectedUser) return;
-        await fetch(`/api/admin/users/${selectedUser}/block`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        fetchAdminData();
-      },
-      description: 'Block a user from accessing the platform'
-    },
-    {
-      label: 'Delete Order',
-      action: async () => {
-        const orderId = prompt('Enter order ID to delete:');
-        if (!orderId) return;
-        await fetch(`/api/admin/orders/${orderId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        fetchAdminData();
-      },
-      description: 'Delete an order from the system'
-    },
-    {
-      label: 'Generate Report',
-      action: async () => {
-        const response = await fetch('/api/admin/report', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'admin-report.csv';
-        a.click();
-      },
-      description: 'Generate and download a system report'
-    }
+  const menuItems = [
+    ...(user?.role === 'superadmin' ? [
+      { name: 'Admin Management', path: 'admins', icon: <Users className="w-5 h-5" /> },
+    ] : []),
+    { name: 'User Management', path: 'users', icon: <Users className="w-5 h-5" /> },
+    { name: 'System Settings', path: 'settings', icon: <Settings className="w-5 h-5" /> },
+    { name: 'System Logs', path: 'logs', icon: <Activity className="w-5 h-5" /> },
   ];
 
+  // Debug log to check user data
+  console.log('AdminConsole - Current user:', user);
+
+  // Check if user exists and has admin role
+  if (!user) {
+    console.log('No user found');
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Not Authenticated</h2>
+          <p className="text-gray-600 mb-4">Please log in to access this page.</p>
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            onClick={() => navigate('/login')}
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Define admin roles - must match backend enum
+  const adminRoles = ['admin', 'superadmin', 'superuser'];
+  
+  // Separate check for admin role
+  if (!adminRoles.includes(user.role || '')) {
+    console.log('User role:', user.role);
+    console.log('Allowed roles:', adminRoles);
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
+          <p className="text-gray-600 mb-4">
+            You do not have permission to access this page. Your role: {user.role}
+          </p>
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            onClick={() => navigate('/')}
+          >
+            Return to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Admin Console</h1>
-      
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="text-gray-500">Total Users</h3>
-          <p className="text-2xl font-bold">{stats.totalUsers}</p>
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
+      <div className="w-64 bg-white shadow-md">
+        <div className="p-4">
+          <h2 className="text-xl font-semibold text-gray-800">
+            {user?.role === 'superadmin' ? 'Superadmin Console' : 'Admin Console'}
+          </h2>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="text-gray-500">Total Orders</h3>
-          <p className="text-2xl font-bold">{stats.totalOrders}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="text-gray-500">Total Revenue</h3>
-          <p className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="text-gray-500">Active Users</h3>
-          <p className="text-2xl font-bold">{stats.activeUsers}</p>
-        </div>
-      </div>
-
-      {/* Admin Actions */}
-      <div className="bg-white p-6 rounded-lg shadow mb-8">
-        <h2 className="text-xl font-bold mb-4">Admin Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {adminActions.map((action, index) => (
-            <button
-              key={index}
-              onClick={action.action}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+        <nav className="mt-4">
+          {menuItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 ${
+                location.pathname === `/admin/${item.path}` ? 'bg-gray-100' : ''
+              }`}
             >
-              {action.label}
-            </button>
+              {item.icon}
+              <span className="ml-3">{item.name}</span>
+            </Link>
           ))}
-        </div>
+        </nav>
       </div>
 
-      {/* User Management */}
-      <div className="bg-white p-6 rounded-lg shadow mb-8">
-        <h2 className="text-xl font-bold mb-4">User Management</h2>
-        <select
-          value={selectedUser}
-          onChange={(e) => setSelectedUser(e.target.value)}
-          className="w-full p-2 border rounded mb-4"
-        >
-          <option value="">Select a user</option>
-          {users.map((user) => (
-            <option key={user.id} value={user.id}>
-              {user.email} - {user.role}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        <div className="p-8">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <Users className="w-12 h-12 text-blue-500" />
+                <div className="ml-4">
+                  <h3 className="text-lg font-semibold">Total Users</h3>
+                  <p className="text-2xl font-bold">{stats.totalUsers}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <Package className="w-12 h-12 text-green-500" />
+                <div className="ml-4">
+                  <h3 className="text-lg font-semibold">Total Products</h3>
+                  <p className="text-2xl font-bold">{stats.totalProducts}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <DollarSign className="w-12 h-12 text-yellow-500" />
+                <div className="ml-4">
+                  <h3 className="text-lg font-semibold">Total Revenue</h3>
+                  <p className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      {/* Recent Orders */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-xl font-bold mb-4">Recent Orders</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead>
-              <tr>
-                <th className="px-4 py-2">Order ID</th>
-                <th className="px-4 py-2">User</th>
-                <th className="px-4 py-2">Amount</th>
-                <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr key={order.id}>
-                  <td className="border px-4 py-2">{order.id}</td>
-                  <td className="border px-4 py-2">{order.userEmail}</td>
-                  <td className="border px-4 py-2">${order.amount.toFixed(2)}</td>
-                  <td className="border px-4 py-2">{order.status}</td>
-                  <td className="border px-4 py-2">
-                    <button
-                      onClick={() => {
-                        // Handle order action
-                      }}
-                      className="text-blue-500 hover:text-blue-700"
-                    >
-                      View Details
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* Content Area */}
+          <div className="bg-white rounded-lg shadow">
+            <Outlet />
+          </div>
         </div>
       </div>
     </div>

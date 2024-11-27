@@ -91,7 +91,7 @@ src/
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/pharmalink.git
+git clone https://github.com/makito042/pharmalink.git
 cd pharmalink
 ```
 

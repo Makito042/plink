@@ -1,11 +1,53 @@
 import React from 'react';
-import { Bell, Globe, Lock, Moon } from 'lucide-react';
+import { Bell, Globe, Lock, Moon, Users, Settings as SettingsIcon, List } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const DashboardSettings: React.FC = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
       
+      {isAdmin && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Admin Controls</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link to="/admin/users" className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+              <div className="flex items-center space-x-3">
+                <Users className="w-6 h-6 text-blue-500" />
+                <div>
+                  <h3 className="font-medium">User Management</h3>
+                  <p className="text-sm text-gray-600">Manage users and permissions</p>
+                </div>
+              </div>
+            </Link>
+
+            <Link to="/admin/settings" className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+              <div className="flex items-center space-x-3">
+                <SettingsIcon className="w-6 h-6 text-green-500" />
+                <div>
+                  <h3 className="font-medium">System Settings</h3>
+                  <p className="text-sm text-gray-600">Configure system preferences</p>
+                </div>
+              </div>
+            </Link>
+
+            <Link to="/admin/logs" className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+              <div className="flex items-center space-x-3">
+                <List className="w-6 h-6 text-purple-500" />
+                <div>
+                  <h3 className="font-medium">System Logs</h3>
+                  <p className="text-sm text-gray-600">View system activity logs</p>
+                </div>
+              </div>
+            </Link>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-6">
         {/* Notifications Section */}
         <div className="bg-gray-50 rounded-lg p-6">

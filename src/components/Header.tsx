@@ -2,7 +2,6 @@ import { ShoppingCart, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import './styles.css';
 
 export default function Header() {
   const navigate = useNavigate();
@@ -29,76 +28,62 @@ export default function Header() {
             <div className="relative group">
               <button className="hover:text-[#66cc66]">Categories</button>
               <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden group-hover:block">
-                <Link to="/category/vitamins" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
-                  Vitamins & Supplements
-                </Link>
-                <Link to="/category/personal-care" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
-                  Personal Care
-                </Link>
-                <Link to="/category/otc" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
-                  Over-the-Counter
-                </Link>
+                {/* Add your category links here */}
+                <Link to="/category/medicines" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Medicines</Link>
+                <Link to="/category/equipment" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Medical Equipment</Link>
+                <Link to="/category/supplies" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Medical Supplies</Link>
               </div>
             </div>
             <Link to="/contact" className="hover:text-[#66cc66]">Contact</Link>
           </nav>
 
-          {/* User Actions */}
-          <div className="flex items-center space-x-6">
-            <div className="flex items-center space-x-4">
-              {!isAuthenticated ? (
-                <>
-                  <Link 
-                    to="/login" 
-                    className="text-sm hover:text-[#66cc66] hidden md:block"
+          {/* User Menu */}
+          <div className="flex items-center space-x-4">
+            {isAuthenticated ? (
+              <div className="flex items-center space-x-4">
+                <Link to="/cart" className="relative hover:text-[#66cc66]">
+                  <ShoppingCart className="h-6 w-6" />
+                  {itemCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {itemCount}
+                    </span>
+                  )}
+                </Link>
+                <div className="relative group">
+                  <button className="flex items-center space-x-1 hover:text-[#66cc66]">
+                    <User className="h-6 w-6" />
+                    <span>{user?.name || 'Account'}</span>
+                  </button>
+                  <div 
+                    className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 
+                             opacity-0 invisible transform -translate-y-2
+                             group-hover:opacity-100 group-hover:visible group-hover:translate-y-0
+                             transition-all duration-200 ease-in-out
+                             hover:opacity-100 hover:visible hover:translate-y-0"
                   >
-                    Login
-                  </Link>
-                  <Link 
-                    to="/signup" 
-                    className="text-sm bg-[#66cc66] px-4 py-2 rounded-lg hover:bg-[#4da64d] transition-colors hidden md:block"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              ) : (
-                <div className="relative profile-group">
-                  <Link to="/dashboard" className="hover:text-[#66cc66]">
-                    <User className="w-6 h-6" />
-                  </Link>
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 profile-dropdown">
-                    <Link to="/dashboard" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
-                      Dashboard
-                    </Link>
-                    <Link to="/dashboard/profile" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
-                      Profile
-                    </Link>
-                    <Link to="/dashboard/orders" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
-                      Orders
-                    </Link>
-                    {user?.role === 'admin' && (
-                      <Link to="/admin" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
-                        Admin Console
-                      </Link>
+                    {user?.role === 'superadmin' ? (
+                      <Link to="/admin" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Superadmin Dashboard</Link>
+                    ) : user?.role === 'admin' ? (
+                      <Link to="/admin" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Admin Dashboard</Link>
+                    ) : (
+                      <Link to="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Dashboard</Link>
                     )}
-                    <button 
+                    <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</Link>
+                    <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100"
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       Logout
                     </button>
                   </div>
                 </div>
-              )}
-            </div>
-            <Link to="/cart" className="relative hover:text-[#66cc66]">
-              <ShoppingCart className="w-6 h-6" />
-              {itemCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-[#66cc66] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {itemCount}
-                </span>
-              )}
-            </Link>
+              </div>
+            ) : (
+              <div className="space-x-4">
+                <Link to="/login" className="hover:text-[#66cc66]">Login</Link>
+                <Link to="/register" className="bg-white text-[#004d00] px-4 py-2 rounded-md hover:bg-[#f2f2f2]">Register</Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

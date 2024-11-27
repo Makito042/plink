@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { logout as apiLogout } from '../services/api';
 
 interface User {
   id: string;
@@ -15,6 +16,7 @@ interface AuthContextType {
   login: (token: string, user: User) => void;
   logout: () => void;
   updateUser: (user: User) => void;
+  hasRole: (roles: string | string[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,8 +25,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
-  // Load authentication state from localStorage on mount
   useEffect(() => {
+    // Load authentication state from localStorage on mount
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
     
@@ -37,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error parsing stored user:', error);
         // Clear invalid data
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
       }
     }
@@ -49,11 +52,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('user', JSON.stringify(newUser));
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      await apiLogout();
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+    }
   };
 
   const updateUser = (updatedUser: User) => {
@@ -61,17 +71,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
+  const hasRole = (roles: string | string[]) => {
+    if (!user?.role) return false;
+    const roleArray = Array.isArray(roles) ? roles : [roles];
+    return roleArray.includes(user.role);
+  };
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isAuthenticated: !!token,
-        login,
-        logout,
-        updateUser
-      }}
-    >
+    <AuthContext.Provider value={{
+      user,
+      token,
+      isAuthenticated: !!token && !!user,
+      login,
+      logout,
+      updateUser,
+      hasRole
+    }}>
       {children}
     </AuthContext.Provider>
   );
