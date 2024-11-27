@@ -212,11 +212,6 @@ export async function fetchProfile(): Promise<ProfileResponse> {
     }
 
     const response = await api.get('/auth/profile');
-    
-    if (!response.data) {
-      throw new Error('No profile data received');
-    }
-
     return response.data;
   } catch (error: any) {
     console.error('Profile fetch error:', error);
@@ -231,15 +226,7 @@ export async function fetchProfile(): Promise<ProfileResponse> {
       throw new Error('Session expired. Please log in again.');
     }
 
-    if (error.response.status === 404) {
-      throw new Error('Profile not found. Please log in again.');
-    }
-
-    if (error.response?.data?.message) {
-      throw new Error(error.response.data.message);
-    }
-
-    throw new Error('Failed to load profile data. Please try again.');
+    throw new Error(error.response?.data?.message || error.message || 'Failed to fetch profile');
   }
 }
 
@@ -252,32 +239,27 @@ export async function updateProfile(data: {
   newPassword?: string;
 }): Promise<ProfileResponse> {
   try {
-    const response = await fetch(`${API_URL}/users/profile`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(),
-      },
-      body: JSON.stringify(data),
-    });
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to update profile');
+    const response = await api.put('/auth/profile', data);
+    
+    // Update local storage with new user data if available
+    if (response.data.user) {
+      localStorage.setItem('user', JSON.stringify(response.data.user));
     }
     
     return response.data;
   } catch (error: any) {
     console.error('Profile update error:', error);
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      throw new Error('Session expired. Please log in again.');
+    
+    if (!error.response) {
+      throw new Error('Network error. Please check your connection.');
     }
-    if (error.response?.data?.message) {
-      throw new Error(error.response.data.message);
-    }
-    throw new Error('Failed to update profile. Please try again.');
+    
+    throw new Error(error.response?.data?.message || error.message || 'Failed to update profile');
   }
 }
 
