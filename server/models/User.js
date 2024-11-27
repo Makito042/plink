@@ -170,8 +170,7 @@ userSchema.pre('save', async function(next) {
     // Skip password hashing if middleware is disabled for this save
     if (this.$skipMiddleware) {
       console.log('Password hashing middleware skipped due to $skipMiddleware flag');
-      next();
-      return;
+      return next();
     }
 
     // Hash password if it's new or modified
@@ -183,8 +182,13 @@ userSchema.pre('save', async function(next) {
 
       if (!this.password) {
         console.log('No password provided, skipping hash');
-        next();
-        return;
+        return next();
+      }
+
+      // Check if password is already hashed
+      if (this.password.startsWith('$2')) {
+        console.log('Password appears to be already hashed, skipping hash');
+        return next();
       }
 
       try {

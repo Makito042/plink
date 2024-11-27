@@ -100,8 +100,9 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Hash password directly (don't rely on middleware)
-    const salt = await bcrypt.genSalt(10);
+    // Hash password securely using bcrypt
+    const saltRounds = 10; // Use a higher number for more secure hashes, but slower performance
+    const salt = await bcrypt.genSalt(saltRounds);
     console.log('Generated salt for password hashing:', {
       saltLength: salt.length,
       saltStart: salt.substring(0, 10)
@@ -146,7 +147,8 @@ router.post('/register', async (req, res) => {
 
     // Create and save user
     const user = new User(userData);
-    user.$skipMiddleware = true; // Skip password hashing middleware
+    // Skip password hashing middleware since we already hashed it
+    user.$skipMiddleware = true;
     
     try {
       await user.save();
