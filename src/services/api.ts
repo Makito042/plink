@@ -252,16 +252,18 @@ export async function updateProfile(data: {
   newPassword?: string;
 }): Promise<ProfileResponse> {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('No authentication token found');
-    }
+    const response = await fetch(`${API_URL}/users/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify(data),
+    });
 
-    const response = await api.put('/auth/profile', data);
-    
-    // Update local storage with new user data if available
-    if (response.data.user) {
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to update profile');
     }
     
     return response.data;
