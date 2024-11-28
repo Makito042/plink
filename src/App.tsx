@@ -20,6 +20,7 @@ import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/auth/Register';
+import VendorRegister from './pages/vendor/Register';
 import ProductDetail from './pages/ProductDetail';
 import Profile from './pages/Profile';
 import DashboardProfile from './pages/DashboardProfile';
@@ -60,6 +61,7 @@ export default function App() {
                       <Route path="/login" element={<Login />} />
                       <Route path="/admin/login" element={<AdminLogin />} />
                       <Route path="/register" element={<Register />} />
+                      <Route path="/vendor/register" element={<VendorRegister />} />
                       <Route path="/category/:category" element={<Category />} />
                       <Route path="/product/:id" element={<ProductDetail />} />
                       
@@ -101,13 +103,6 @@ export default function App() {
                         <Route path="settings" element={<Settings />} />
                         <Route path="logs" element={<SystemLogs />} />
                       </Route>
-
-                      {/* Admin Registration (Superadmin Only) */}
-                      <Route path="/admin-register" element={
-                        <RoleBasedRoute allowedRoles={['superadmin']} redirectTo="/admin">
-                          <AdminRegister />
-                        </RoleBasedRoute>
-                      } />
                     </Routes>
                   </main>
                   <Footer />

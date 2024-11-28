@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { fetchVendorStats, fetchVendorProducts } from '../../services/api';
-import { Box, Grid, Card, Typography, Button } from '@mui/material';
+import { fetchVendorDashboardStats } from '../../services/api';
+import { Box, Grid, Card, Typography, Button, CircularProgress } from '@mui/material';
 import { Package, DollarSign, ShoppingBag, Star } from 'lucide-react';
 import ProductList from './ProductList';
 import AddProductModal from './AddProductModal';
@@ -14,127 +14,160 @@ interface VendorStats {
   averageRating: number;
 }
 
+const defaultStats: VendorStats = {
+  totalProducts: 0,
+  publishedProducts: 0,
+  draftProducts: 0,
+  outOfStockProducts: 0,
+  averageRating: 0,
+};
+
 const VendorDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState<VendorStats | null>(null);
+  const [stats, setStats] = useState<VendorStats>(defaultStats);
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchVendorDashboardStats();
+      setStats({
+        totalProducts: data?.totalProducts ?? 0,
+        publishedProducts: data?.publishedProducts ?? 0,
+        draftProducts: data?.draftProducts ?? 0,
+        outOfStockProducts: data?.outOfStockProducts ?? 0,
+        averageRating: data?.averageRating ?? 0,
+      });
+    } catch (err) {
+      setError('Failed to load vendor statistics');
+      console.error('Error fetching vendor stats:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchStats();
   }, []);
 
-  const fetchStats = async () => {
-    try {
-      const data = await fetchVendorStats();
-      setStats(data);
-      setLoading(false);
-    } catch (err) {
-      setError('Failed to load vendor statistics');
-      setLoading(false);
-    }
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  const formatRating = (rating: number) => {
+    return rating.toFixed(1);
   };
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (error) {
-    return <div className="text-red-500">{error}</div>;
-  }
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Vendor Dashboard</h1>
-          <p className="text-gray-600">Welcome back, {user?.storeDetails?.storeName}</p>
-        </div>
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Box>
+          <Typography variant="h4" gutterBottom>Vendor Dashboard</Typography>
+          <Typography variant="subtitle1" color="textSecondary">
+            Welcome back, {user?.storeDetails?.storeName || user?.name || 'Vendor'}
+          </Typography>
+        </Box>
         <Button
           variant="contained"
           color="primary"
           onClick={() => setIsAddProductModalOpen(true)}
-          className="bg-green-600 hover:bg-green-700"
+          sx={{ bgcolor: 'primary.main', '&:hover': { bgcolor: 'primary.dark' } }}
         >
           Add New Product
         </Button>
-      </div>
+      </Box>
 
-      <Grid container spacing={4} className="mb-8">
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
+
+      <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
-          <Card className="p-4">
-            <div className="flex items-center">
-              <Package className="h-8 w-8 text-blue-500" />
-              <div className="ml-4">
+          <Card sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Package style={{ width: 40, height: 40, color: '#2196f3' }} />
+              <Box sx={{ ml: 2 }}>
                 <Typography variant="subtitle2" color="textSecondary">
                   Total Products
                 </Typography>
                 <Typography variant="h4">
-                  {stats?.totalProducts || 0}
+                  {stats.totalProducts}
                 </Typography>
-              </div>
-            </div>
+              </Box>
+            </Box>
           </Card>
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
-          <Card className="p-4">
-            <div className="flex items-center">
-              <ShoppingBag className="h-8 w-8 text-green-500" />
-              <div className="ml-4">
+          <Card sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <ShoppingBag style={{ width: 40, height: 40, color: '#4caf50' }} />
+              <Box sx={{ ml: 2 }}>
                 <Typography variant="subtitle2" color="textSecondary">
                   Published Products
                 </Typography>
                 <Typography variant="h4">
-                  {stats?.publishedProducts || 0}
+                  {stats.publishedProducts}
                 </Typography>
-              </div>
-            </div>
+              </Box>
+            </Box>
           </Card>
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
-          <Card className="p-4">
-            <div className="flex items-center">
-              <Package className="h-8 w-8 text-yellow-500" />
-              <div className="ml-4">
+          <Card sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Package style={{ width: 40, height: 40, color: '#ff9800' }} />
+              <Box sx={{ ml: 2 }}>
                 <Typography variant="subtitle2" color="textSecondary">
                   Draft Products
                 </Typography>
                 <Typography variant="h4">
-                  {stats?.draftProducts || 0}
+                  {stats.draftProducts}
                 </Typography>
-              </div>
-            </div>
+              </Box>
+            </Box>
           </Card>
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
-          <Card className="p-4">
-            <div className="flex items-center">
-              <Star className="h-8 w-8 text-purple-500" />
-              <div className="ml-4">
+          <Card sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Star style={{ width: 40, height: 40, color: '#9c27b0' }} />
+              <Box sx={{ ml: 2 }}>
                 <Typography variant="subtitle2" color="textSecondary">
                   Average Rating
                 </Typography>
                 <Typography variant="h4">
-                  {stats?.averageRating?.toFixed(1) || '0.0'}
+                  {formatRating(stats.averageRating)}
                 </Typography>
-              </div>
-            </div>
+              </Box>
+            </Box>
           </Card>
         </Grid>
       </Grid>
 
-      <ProductList onProductAdded={fetchStats} />
+      <Box sx={{ mt: 4 }}>
+        <ProductList onProductAdded={fetchStats} />
+      </Box>
       
       <AddProductModal
         open={isAddProductModalOpen}
         onClose={() => setIsAddProductModalOpen(false)}
-        onProductAdded={fetchStats}
+        onProductAdded={() => {
+          fetchStats();
+          setIsAddProductModalOpen(false);
+        }}
       />
-    </div>
+    </Box>
   );
 };
 
