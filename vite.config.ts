@@ -27,7 +27,8 @@ export default defineConfig({
     exclude: ['lucide-react'],
   },
   build: {
-    outDir: 'build',
+    outDir: 'dist',
+    emptyOutDir: true,
     sourcemap: false,
     rollupOptions: {
       output: {

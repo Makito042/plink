@@ -8,7 +8,7 @@ async function buildProject() {
       build: {
         sourcemap: false,
         target: 'es2015',
-        outDir: 'build',
+        outDir: 'dist',
         emptyOutDir: true,
         minify: 'esbuild',
         cssMinify: true,

@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { existsSync } from 'fs';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import userRoutes from './routes/users.js';
@@ -82,11 +83,22 @@ app.use('/api/users', userRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(join(__dirname, '../dist')));
-
-  app.get('*', (req, res) => {
-    res.sendFile(join(__dirname, '../dist/index.html'));
-  });
+  // First try the 'dist' directory
+  const distPath = join(__dirname, '../dist');
+  const buildPath = join(__dirname, '../build');
+  
+  // Check if dist exists, if not use build
+  if (existsSync(distPath)) {
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(join(distPath, 'index.html'));
+    });
+  } else {
+    app.use(express.static(buildPath));
+    app.get('*', (req, res) => {
+      res.sendFile(join(buildPath, 'index.html'));
+    });
+  }
 }
 
 // Error handling middleware
