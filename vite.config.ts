@@ -32,9 +32,16 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'mui-vendor': ['@mui/material', '@emotion/react', '@emotion/styled']
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@mui') || id.includes('@emotion')) {
+              return 'mui';
+            }
+            if (id.includes('react') || id.includes('redux')) {
+              return 'react';
+            }
+            return 'vendor';
+          }
         }
       }
     }
