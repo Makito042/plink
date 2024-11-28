@@ -1,202 +1,193 @@
-import { Lock, Mail } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { 
+  Box, 
+  Button, 
+  TextField, 
+  Typography, 
+  Alert, 
+  Paper,
+  Tabs,
+  Tab,
+  Divider
+} from '@mui/material';
 import { useAuth } from '../context/AuthContext';
-import { login } from '../services/api';
+import { login as apiLogin } from '../services/api';
 
-export default function Login() {
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
+
+const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { login: authLogin } = useAuth();
-  const [loginType, setLoginType] = useState<'vendor' | 'customer'>('customer');
+  const { login } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [tabValue, setTabValue] = useState(0);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     role: 'user' as 'user' | 'vendor'
   });
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
-
-    try {
-      // Update role based on login type
-      const loginData = {
-        ...formData,
-        role: loginType === 'vendor' ? 'vendor' : 'user'
-      };
-
-      console.log('Attempting login with:', { ...loginData, password: '[REDACTED]' });
-      const response = await login(loginData);
-      
-      if (!response || !response.tokens || !response.tokens.accessToken) {
-        throw new Error('Invalid response from server');
-      }
-
-      // Check vendor-specific conditions
-      if (response.user.role === 'vendor') {
-        if (response.user.status !== 'active') {
-          throw new Error('Your vendor account is pending approval. Please contact support for more information.');
-        }
-        if (!response.user.storeDetails?.active) {
-          throw new Error('Your store has not been activated yet. Please wait for admin approval.');
-        }
-      }
-
-      // Store user data and tokens
-      authLogin(response.tokens.accessToken, response.user);
-      
-      // Redirect based on user role
-      switch (response.user.role) {
-        case 'vendor':
-          navigate('/dashboard');
-          break;
-        default:
-          navigate('/');
-      }
-    } catch (err: any) {
-      console.error('Login error:', err);
-      setError('Invalid email or password. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+    setFormData(prev => ({
+      ...prev,
+      role: newValue === 0 ? 'user' : 'vendor'
+    }));
+    setError(null);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [name]: value
     }));
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    try {
+      setLoading(true);
+      const response = await apiLogin(formData);
+      login(response.tokens.accessToken, response.user);
+      
+      if (response.user.role === 'vendor') {
+        navigate('/vendor/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to log in');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Welcome to PharmaLink
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to your account
-          </p>
-        </div>
+    <Box sx={{ 
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      bgcolor: 'background.default',
+      py: 4
+    }}>
+      <Paper elevation={3} sx={{ p: 4, maxWidth: 450, width: '100%' }}>
+        <Typography variant="h4" align="center" gutterBottom color="primary">
+          PharmaLink
+        </Typography>
+        
+        <Typography variant="subtitle1" align="center" gutterBottom color="text.secondary" sx={{ mb: 3 }}>
+          Your Trusted Healthcare Partner
+        </Typography>
 
-        {/* Login Type Selector */}
-        <div className="flex rounded-md shadow-sm" role="group">
-          <button
-            type="button"
-            onClick={() => {
-              setLoginType('customer');
-              setFormData(prev => ({ ...prev, role: 'user' }));
-              setError('');
-            }}
-            className={`flex-1 py-2 px-4 text-sm font-medium rounded-l-lg border ${
-              loginType === 'customer'
-                ? 'bg-indigo-600 text-white border-indigo-600'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-            }`}
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
+          variant="fullWidth"
+          sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
+        >
+          <Tab label="Customer Login" />
+          <Tab label="Vendor Login" />
+        </Tabs>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Email"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Password"
+            name="password"
+            type="password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+          />
+
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            color="primary"
+            size="large"
+            disabled={loading}
+            sx={{ mt: 3, mb: 2 }}
           >
-            Customer
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setLoginType('vendor');
-              setFormData(prev => ({ ...prev, role: 'vendor' }));
-              setError('');
-            }}
-            className={`flex-1 py-2 px-4 text-sm font-medium rounded-r-lg border ${
-              loginType === 'vendor'
-                ? 'bg-indigo-600 text-white border-indigo-600'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Vendor
-          </button>
-        </div>
+            {loading ? 'Logging in...' : `Login as ${tabValue === 0 ? 'Customer' : 'Vendor'}`}
+          </Button>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded relative" role="alert">
-              {error}
-            </div>
-          )}
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div className="mb-4">
-              <label htmlFor="email" className="sr-only">Email address</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  className="appearance-none rounded-md relative block w-full px-3 py-2 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                  placeholder={`${loginType === 'vendor' ? 'Vendor' : 'Customer'} email`}
-                  value={formData.email}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">Password</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  className="appearance-none rounded-md relative block w-full px-3 py-2 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                  placeholder="Password"
-                  value={formData.password}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-          </div>
+          <Divider sx={{ my: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              OR
+            </Typography>
+          </Divider>
 
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              Don't have an account?
+            </Typography>
+            <Button
+              component={Link}
+              to={tabValue === 0 ? "/register" : "/vendor/register"}
+              variant="outlined"
+              fullWidth
+              color="primary"
             >
-              {isLoading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </div>
+              {tabValue === 0 ? 'Create Customer Account' : 'Register as Vendor'}
+            </Button>
+          </Box>
 
-          <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Don't have an account? Register
+          <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              <Link to="/admin/login" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                Administrator Login
               </Link>
-            </div>
-            {loginType === 'vendor' && (
-              <div className="text-sm">
-                <Link to="/vendor/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-                  Register as Vendor
-                </Link>
-              </div>
-            )}
-          </div>
+            </Typography>
+          </Box>
         </form>
-
-        {/* Admin Login Link */}
-        <div className="mt-4 text-center">
-          <Link to="/admin/login" className="text-sm text-gray-600 hover:text-indigo-500">
-            Admin Portal →
-          </Link>
-        </div>
-      </div>
-    </div>
+      </Paper>
+    </Box>
   );
-}
+};
+
+export default Login;

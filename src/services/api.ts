@@ -20,6 +20,55 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  storeDetails?: {
+    name: string;
+    address: string;
+    phone: string;
+  };
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  category: string;
+  specifications: Record<string, string>;
+  dimensions: {
+    length: number;
+    width: number;
+    height: number;
+    weight: number;
+  };
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+  vendorId: string;
+}
+
+export interface VendorStats {
+  totalProducts: number;
+  totalOrders: number;
+  totalRevenue: number;
+  activeProducts: number;
+}
+
+export interface SystemLog {
+  _id: string;
+  timestamp: string;
+  level: 'info' | 'warning' | 'error';
+  message: string;
+  action?: string;
+  user?: string;
+}
+
 interface LoginResponse {
   user: {
     id: string;
@@ -71,36 +120,6 @@ interface AdminStats {
     admins: number;
     inactiveUsers: number;
   };
-}
-
-interface SystemLog {
-  _id: string;
-  level: string;
-  message: string;
-  timestamp: string;
-  user?: string;
-  action?: string;
-  details?: any;
-}
-
-interface Product {
-  _id: string;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  stock: number;
-  images: Array<{ url: string; alt: string }>;
-  specifications: Array<{ name: string; value: string }>;
-  dimensions: {
-    length: number;
-    width: number;
-    height: number;
-    weight: number;
-  };
-  tags: string[];
-  status: string;
-  vendor: string;
 }
 
 interface ProductsResponse {
@@ -397,5 +416,17 @@ export async function resetVendorPassword(email: string): Promise<{ message: str
       throw new Error(error.response.data.message);
     }
     throw new Error('Failed to reset password. Please try again.');
+  }
+}
+
+export async function getVendorStats(): Promise<VendorStats> {
+  try {
+    const response = await api.get('/vendor/stats');
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    }
+    throw new Error('Failed to fetch vendor stats. Please try again.');
   }
 }
