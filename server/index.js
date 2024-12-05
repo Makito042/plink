@@ -4,16 +4,26 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import userRoutes from './routes/users.js';
+import vendorRoutes from './routes/vendor.js';
 import SystemLog from './models/SystemLog.js';
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Create upload directories if they don't exist
+const uploadDirs = ['./uploads', './uploads/products', './uploads/temp'];
+uploadDirs.forEach(dir => {
+  const fullPath = join(__dirname, dir);
+  if (!existsSync(fullPath)) {
+    mkdirSync(fullPath, { recursive: true });
+  }
+});
 
 const app = express();
 const port = process.env.PORT || 5001;
@@ -25,6 +35,9 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve uploaded files
+app.use('/uploads', express.static(join(__dirname, 'uploads')));
 
 // MongoDB Connection with enhanced retry logic and error handling
 const connectDB = async (retryCount = 0, maxRetries = 5) => {
@@ -80,6 +93,7 @@ const connectDB = async (retryCount = 0, maxRetries = 5) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/vendor', vendorRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
@@ -101,11 +115,11 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
-// Error handling middleware
+// Global error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('Global error:', err);
   res.status(500).json({
-    message: 'Something went wrong!',
+    message: 'Internal server error',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
@@ -120,12 +134,12 @@ mongoose.connection.on('error', (err) => {
   console.error('MongoDB Atlas connection error:', err);
 });
 
-// Initial connection attempt
+// Connect to MongoDB before starting the server
 connectDB().then(() => {
   app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
   });
-}).catch(err => {
-  console.error('Failed to start server:', err);
+}).catch(error => {
+  console.error('Failed to start server:', error);
   process.exit(1);
 });

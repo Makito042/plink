@@ -10,6 +10,7 @@ import {
   MenuItem,
   IconButton,
   Chip,
+  InputAdornment
 } from '@mui/material';
 import { X, Upload } from 'lucide-react';
 import { updateProduct } from '../../services/api';
@@ -209,16 +210,21 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
 
             <Grid item xs={12} sm={6}>
               <TextField
-                name="price"
-                label="Price"
-                type="number"
                 fullWidth
-                required
+                label="Price (RWF)"
+                type="number"
+                name="price"
                 value={formData.price}
                 onChange={handleInputChange}
+                required
                 InputProps={{
-                  startAdornment: '$'
+                  startAdornment: <InputAdornment position="start">RWF</InputAdornment>,
+                  inputProps: { 
+                    min: 0,
+                    step: 100 // Suggest increments of 100 RWF
+                  }
                 }}
+                helperText="Enter the price in Rwandan Francs (RWF)"
               />
             </Grid>
 

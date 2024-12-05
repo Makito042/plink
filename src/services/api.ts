@@ -404,23 +404,15 @@ export async function fetchVendorProducts(
   }
 }
 
-export async function fetchVendorDashboardStats(): Promise<{
-  totalProducts: number;
-  publishedProducts: number;
-  draftProducts: number;
-  outOfStockProducts: number;
-  averageRating: number;
-}> {
+export const fetchVendorDashboardStats = async () => {
   try {
     const response = await api.get('/vendor/dashboard');
     return response.data;
-  } catch (error: any) {
-    if (error.response?.data?.message) {
-      throw new Error(error.response.data.message);
-    }
-    throw new Error('Failed to fetch dashboard stats. Please try again.');
+  } catch (error) {
+    console.error('Error fetching vendor dashboard stats:', error);
+    throw error;
   }
-}
+};
 
 export async function resetVendorPassword(email: string): Promise<{ message: string; email: string; newPassword: string }> {
   try {

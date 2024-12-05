@@ -111,8 +111,17 @@ export default function Dashboard() {
               location.pathname === '/dashboard' ? activeNavClass : inactiveNavClass
             }`}
           >
-            <Box className="w-5 h-5" />
-            <span>Products</span>
+            <BarChart2 className="w-5 h-5" />
+            <span>Dashboard</span>
+          </Link>
+          <Link
+            to="/vendor/inventory-management"
+            className={`${baseNavClass} ${
+              location.pathname === '/vendor/inventory-management' ? activeNavClass : inactiveNavClass
+            }`}
+          >
+            <Package className="w-5 h-5" />
+            <span>Inventory Management</span>
           </Link>
           <Link
             to="/dashboard/orders"
@@ -122,15 +131,6 @@ export default function Dashboard() {
           >
             <ShoppingBag className="w-5 h-5" />
             <span>Orders</span>
-          </Link>
-          <Link
-            to="/dashboard/inventory"
-            className={`${baseNavClass} ${
-              location.pathname === '/dashboard/inventory' ? activeNavClass : inactiveNavClass
-            }`}
-          >
-            <Package className="w-5 h-5" />
-            <span>Inventory</span>
           </Link>
           <Link
             to="/dashboard/profile"

@@ -36,8 +36,26 @@ const productSchema = new mongoose.Schema({
     default: 0
   },
   images: [{
-    url: String,
-    alt: String
+    url: {
+      type: String,
+      required: true
+    },
+    alt: {
+      type: String,
+      required: true
+    },
+    metadata: {
+      width: Number,
+      height: Number,
+      format: String,
+      size: Number,
+      hasAlpha: Boolean,
+      isAnimated: Boolean
+    },
+    order: {
+      type: Number,
+      default: 0
+    }
   }],
   specifications: [{
     name: String,

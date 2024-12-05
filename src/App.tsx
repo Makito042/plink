@@ -30,6 +30,7 @@ import UserManagement from './pages/admin/UserManagement';
 import Settings from './pages/admin/Settings';
 import SystemLogs from './pages/admin/SystemLogs';
 import ErrorBoundary from './components/ErrorBoundary';
+import InventoryManagement from './pages/vendor/InventoryManagement';
 
 const theme = createTheme({
   palette: {
@@ -92,6 +93,13 @@ export default function App() {
                           </RoleBasedRoute>
                         } />
                       </Route>
+
+                      {/* Vendor Routes */}
+                      <Route path="/vendor/inventory-management" element={
+                        <RoleBasedRoute allowedRoles={['vendor']}>
+                          <InventoryManagement />
+                        </RoleBasedRoute>
+                      }/>
 
                       {/* Admin Routes */}
                       <Route path="/admin" element={
