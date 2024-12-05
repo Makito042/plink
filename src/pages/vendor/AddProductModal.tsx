@@ -113,15 +113,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     setLoading(true);
     setError('');
 
-    // Validate form
-    if (!formData.name || !formData.price || !formData.category) {
-      setError('Please fill in all required fields');
-      setLoading(false);
-      return;
-    }
-
-    if (images.length === 0) {
-      setError('Please upload at least one product image');
+    if (!validateForm()) {
       setLoading(false);
       return;
     }
@@ -218,15 +210,42 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   };
 
   const categories = [
-    'Electronics',
-    'Clothing',
-    'Books',
-    'Home & Garden',
-    'Sports',
-    'Beauty',
-    'Toys',
+    'Medications',
+    'Supplements',
+    'Personal Care',
+    'Medical Devices',
+    'First Aid',
+    'Hygiene',
+    'Baby Care',
     'Other'
   ];
+
+  const validateForm = () => {
+    const requiredFields = ['name', 'price', 'category', 'stock'];
+    const missingFields = requiredFields.filter(field => !formData[field]);
+
+    if (missingFields.length > 0) {
+      setError(`Please fill in the following fields: ${missingFields.join(', ')}`);
+      return false;
+    }
+
+    if (images.length === 0) {
+      setError('Please upload at least one product image');
+      return false;
+    }
+
+    if (parseFloat(formData.price) <= 0) {
+      setError('Price must be greater than 0');
+      return false;
+    }
+
+    if (parseInt(formData.stock) < 0) {
+      setError('Stock cannot be negative');
+      return false;
+    }
+
+    return true;
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>

@@ -3,6 +3,7 @@ import { auth } from '../middleware/auth.js';
 import { processImages } from '../middleware/imageProcessing.js';
 import Product from '../models/Product.js';
 import multer from 'multer';
+import mongoose from 'mongoose';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
 import xlsx from 'xlsx';
@@ -66,10 +67,9 @@ const bulkUpload = multer({
 
 // Middleware to handle file upload
 router.use(auth);
-router.use(requireVendor);
 
 // Create a new product
-router.post('/products', async (req, res) => {
+router.post('/products', requireVendor, async (req, res) => {
   try {
     upload(req, res, async function(err) {
       if (err) {
@@ -90,7 +90,8 @@ router.post('/products', async (req, res) => {
             stock,
             specifications,
             dimensions,
-            tags
+            tags,
+            status = 'draft' // Add optional status parameter
           } = req.body;
 
           // Process uploaded images
@@ -100,55 +101,48 @@ router.post('/products', async (req, res) => {
             metadata: file.metadata // Add image metadata
           })) : [];
 
-          const product = new Product({
+          const newProduct = new Product({
             name,
             description,
             price: parseFloat(price),
-            images,
             category,
-            vendor: req.user.id,
             stock: parseInt(stock),
-            specifications: JSON.parse(specifications || '[]'),
-            dimensions: JSON.parse(dimensions || '{}'),
-            tags: JSON.parse(tags || '[]'),
-            status: 'draft'
+            vendor: req.user.id,
+            specifications: specifications ? JSON.parse(specifications) : {},
+            dimensions: dimensions ? JSON.parse(dimensions) : {},
+            tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
+            images,
+            status: ['draft', 'published', 'outOfStock', 'discontinued'].includes(status) 
+              ? status 
+              : 'draft' // Validate status
           });
 
-          await product.save();
+          await newProduct.save();
 
-          // Include any file processing errors in the response
-          const response = {
-            product,
-            message: 'Product created successfully'
-          };
-          if (req.fileErrors?.length) {
-            response.warnings = {
-              message: 'Some images failed to process',
-              errors: req.fileErrors
-            };
-          }
-
-          res.status(201).json(response);
+          res.status(201).json({
+            message: 'Product created successfully',
+            product: newProduct
+          });
         } catch (error) {
-          console.error('Product creation error:', error);
+          console.error('Error creating product:', error);
           res.status(500).json({ 
-            message: 'Error creating product',
-            error: error.message
+            message: 'Failed to create product', 
+            error: error.message 
           });
         }
       });
     });
   } catch (error) {
-    console.error('Product creation error:', error);
+    console.error('Unexpected error in product creation:', error);
     res.status(500).json({ 
-      message: 'Error creating product',
+      message: 'Unexpected error occurred', 
       error: error.message 
     });
   }
 });
 
 // Bulk upload products
-router.post('/products/bulk', async (req, res) => {
+router.post('/products/bulk', requireVendor, async (req, res) => {
   try {
     bulkUpload(req, res, async function(err) {
       if (err) {
@@ -224,7 +218,7 @@ router.post('/products/bulk', async (req, res) => {
 });
 
 // Get vendor's products
-router.get('/products', async (req, res) => {
+router.get('/products', requireVendor, async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
     const query = { vendor: req.user.id };
@@ -255,17 +249,8 @@ router.get('/products', async (req, res) => {
 });
 
 // Update product
-router.put('/products/:productId', async (req, res) => {
+router.put('/products/:productId', requireVendor, async (req, res) => {
   try {
-    const product = await Product.findOne({
-      _id: req.params.productId,
-      vendor: req.user.id
-    });
-
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-
     upload(req, res, async function(err) {
       if (err) {
         return res.status(400).json({ 
@@ -277,71 +262,75 @@ router.put('/products/:productId', async (req, res) => {
       // Process uploaded images
       await processImages(req, res, async () => {
         try {
-          const updates = { ...req.body };
+          const { productId } = req.params;
+          const {
+            name,
+            description,
+            price,
+            category,
+            stock,
+            specifications,
+            dimensions,
+            tags
+          } = req.body;
+
+          // Find the product
+          const product = await Product.findOne({
+            _id: productId,
+            vendor: req.user.id
+          });
+
+          if (!product) {
+            return res.status(404).json({ message: 'Product not found' });
+          }
+
+          // Process uploaded images
+          const newImages = req.files ? req.files.map(file => ({
+            url: `/uploads/products/${file.filename}`,
+            alt: name,
+            metadata: file.metadata // Add image metadata
+          })) : [];
+
+          // Update product details
+          product.name = name;
+          product.description = description;
+          product.price = parseFloat(price);
+          product.category = category;
+          product.stock = parseInt(stock);
+          product.specifications = specifications ? JSON.parse(specifications) : {};
+          product.dimensions = dimensions ? JSON.parse(dimensions) : {};
+          product.tags = tags ? tags.split(',').map(tag => tag.trim()) : [];
           
-          // Process new images if uploaded
-          if (req.files?.length) {
-            const newImages = req.files.map(file => ({
-              url: `/uploads/products/${file.filename}`,
-              alt: updates.name || product.name,
-              metadata: file.metadata // Add image metadata
-            }));
-            updates.images = [...product.images, ...newImages];
-          }
+          // Merge existing and new images
+          product.images = [...product.images, ...newImages];
+          product.updatedAt = new Date();
 
-          // Parse JSON fields
-          if (updates.specifications) {
-            updates.specifications = JSON.parse(updates.specifications);
-          }
-          if (updates.dimensions) {
-            updates.dimensions = JSON.parse(updates.dimensions);
-          }
-          if (updates.tags) {
-            updates.tags = JSON.parse(updates.tags);
-          }
-          if (updates.price) {
-            updates.price = parseFloat(updates.price);
-          }
-          if (updates.stock) {
-            updates.stock = parseInt(updates.stock);
-          }
-
-          Object.assign(product, updates);
           await product.save();
 
-          // Include any file processing errors in the response
-          const response = {
-            product,
-            message: 'Product updated successfully'
-          };
-          if (req.fileErrors?.length) {
-            response.warnings = {
-              message: 'Some images failed to process',
-              errors: req.fileErrors
-            };
-          }
-
-          res.json(response);
+          res.json({
+            message: 'Product updated successfully',
+            product
+          });
         } catch (error) {
           console.error('Error updating product:', error);
           res.status(500).json({ 
-            message: 'Error updating product',
+            message: 'Failed to update product', 
             error: error.message 
           });
         }
       });
     });
   } catch (error) {
-    console.error('Error updating product:', error);
+    console.error('Unexpected error in product update:', error);
     res.status(500).json({ 
-      message: 'Error updating product',
+      message: 'Unexpected error occurred', 
       error: error.message 
     });
   }
 });
 
 // Delete product image
-router.delete('/products/:productId/images/:imageIndex', async (req, res) => {
+router.delete('/products/:productId/images/:imageIndex', requireVendor, async (req, res) => {
   try {
     const product = await Product.findOne({
       _id: req.params.productId,
@@ -379,7 +368,7 @@ router.delete('/products/:productId/images/:imageIndex', async (req, res) => {
 });
 
 // Reorder product images
-router.put('/products/:productId/images/reorder', async (req, res) => {
+router.put('/products/:productId/images/reorder', requireVendor, async (req, res) => {
   try {
     const product = await Product.findOne({
       _id: req.params.productId,
@@ -416,7 +405,7 @@ router.put('/products/:productId/images/reorder', async (req, res) => {
 });
 
 // Delete product
-router.delete('/products/:productId', async (req, res) => {
+router.delete('/products/:productId', requireVendor, async (req, res) => {
   try {
     const product = await Product.findOneAndDelete({
       _id: req.params.productId,
@@ -434,8 +423,109 @@ router.delete('/products/:productId', async (req, res) => {
   }
 });
 
+// Fetch products for store display
+router.get('/store/products', async (req, res) => {
+  try {
+    const { 
+      category, 
+      minPrice, 
+      maxPrice, 
+      page = 1, 
+      limit = 20,
+      includeOutOfStock = false // New parameter
+    } = req.query;
+
+    // First, let's check what products exist
+    const allProducts = await Product.find({}).select('name status stock');
+    console.log('All products in database:', allProducts);
+
+    // Build query with less restrictions for testing
+    const query = {};
+    
+    // Only apply status filter if we have published products
+    const hasPublishedProducts = allProducts.some(p => p.status === 'published');
+    if (hasPublishedProducts) {
+      query.status = 'published';
+    } else {
+      console.log('Warning: No published products found');
+    }
+
+    // Only apply stock filter if we have in-stock products
+    const hasInStockProducts = allProducts.some(p => p.stock > 0);
+    if (hasInStockProducts && !includeOutOfStock) {
+      query.stock = { $gt: 0 };
+    } else {
+      console.log('Warning: No in-stock products found');
+    }
+
+    if (category) {
+      query.category = category;
+    }
+
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) {
+        query.price.$gte = parseFloat(minPrice);
+      }
+      if (maxPrice) {
+        query.price.$lte = parseFloat(maxPrice);
+      }
+    }
+
+    console.log('Final query:', query);
+
+    // Pagination options
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort: { createdAt: -1 },
+      populate: {
+        path: 'vendor',
+        select: 'name email storeDetails.storeName storeDetails.logo'
+      }
+    };
+
+    const result = await Product.paginate(query, options);
+    
+    // Log the results
+    console.log('Query results:', {
+      totalDocs: result.totalDocs,
+      productsFound: result.docs.map(p => ({
+        name: p.name,
+        status: p.status,
+        stock: p.stock
+      }))
+    });
+
+    if (!result.docs || result.docs.length === 0) {
+      return res.status(404).json({ 
+        message: 'No products found',
+        query,
+        debug: {
+          totalProducts: allProducts.length,
+          publishedProducts: allProducts.filter(p => p.status === 'published').length,
+          inStockProducts: allProducts.filter(p => p.stock > 0).length
+        }
+      });
+    }
+
+    res.json({
+      products: result.docs,
+      totalProducts: result.totalDocs,
+      totalPages: result.totalPages,
+      currentPage: result.page
+    });
+  } catch (error) {
+    console.error('Error fetching store products:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch products',
+      error: error.message
+    });
+  }
+});
+
 // Get vendor dashboard stats
-router.get('/dashboard', auth, requireVendor, async (req, res) => {
+router.get('/dashboard', requireVendor, async (req, res) => {
   try {
     const stats = await Product.aggregate([
       { $match: { vendor: req.user._id } },

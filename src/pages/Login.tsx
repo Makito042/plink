@@ -178,11 +178,7 @@ const Login: React.FC = () => {
           </Box>
 
           <Box sx={{ mt: 2, textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              <Link to="/admin/login" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                Administrator Login
-              </Link>
-            </Typography>
+            {/* Admin login link removed */}
           </Box>
         </form>
       </Paper>

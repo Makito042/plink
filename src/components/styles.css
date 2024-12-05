@@ -123,13 +123,19 @@
   visibility: visible;
 }
 
-/* Dropdown hover behavior */
+/* Dropdown hover behavior with 2-second delay */
 .group:hover > div {
   display: block;
   pointer-events: auto;
+  transition: opacity 0.3s ease, visibility 0.3s;
+  opacity: 1;
+  visibility: visible;
 }
 
 .group > div {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease 2s, visibility 0.3s linear 2s;
   pointer-events: none;
 }
 

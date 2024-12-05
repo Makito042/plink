@@ -1,6 +1,13 @@
-import sharp from 'sharp';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const sharp = require('sharp');
+
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Compresses and optimizes an image file
@@ -50,9 +57,6 @@ export async function compressImage(inputPath, outputPath, options = {}) {
       default:
         throw new Error(`Unsupported format: ${format}`);
     }
-
-    // Delete original file after successful compression
-    await fs.promises.unlink(inputPath);
   } catch (error) {
     console.error('Image compression error:', error);
     throw error;
@@ -67,33 +71,39 @@ export async function compressImage(inputPath, outputPath, options = {}) {
  */
 export async function validateImage(imagePath, limits = {}) {
   const {
-    maxWidth = 5000,
-    maxHeight = 5000,
-    minWidth = 100,
-    minHeight = 100,
-    maxSizeInBytes = 5 * 1024 * 1024 // 5MB
+    maxSizeInMB = 5,
+    allowedFormats = ['jpeg', 'jpg', 'png', 'webp'],
+    maxWidth = 3840,
+    maxHeight = 2160
   } = limits;
 
   try {
+    const metadata = await sharp(imagePath).metadata();
+    
     // Check file size
-    const stats = await fs.promises.stat(imagePath);
-    if (stats.size > maxSizeInBytes) {
-      throw new Error(`Image size exceeds ${maxSizeInBytes / (1024 * 1024)}MB limit`);
+    const stats = fs.statSync(imagePath);
+    const fileSizeInMB = stats.size / (1024 * 1024);
+    if (fileSizeInMB > maxSizeInMB) {
+      console.warn(`Image exceeds max size of ${maxSizeInMB}MB`);
+      return false;
+    }
+
+    // Check format
+    if (!allowedFormats.includes(metadata.format)) {
+      console.warn(`Unsupported image format: ${metadata.format}`);
+      return false;
     }
 
     // Check dimensions
-    const metadata = await sharp(imagePath).metadata();
     if (metadata.width > maxWidth || metadata.height > maxHeight) {
-      throw new Error(`Image dimensions exceed ${maxWidth}x${maxHeight} limit`);
-    }
-    if (metadata.width < minWidth || metadata.height < minHeight) {
-      throw new Error(`Image dimensions below ${minWidth}x${minHeight} minimum`);
+      console.warn(`Image dimensions exceed ${maxWidth}x${maxHeight}`);
+      return false;
     }
 
     return true;
   } catch (error) {
     console.error('Image validation error:', error);
-    throw error;
+    return false;
   }
 }
 
@@ -105,16 +115,18 @@ export async function validateImage(imagePath, limits = {}) {
 export async function getImageMetadata(imagePath) {
   try {
     const metadata = await sharp(imagePath).metadata();
+    const stats = fs.statSync(imagePath);
+
     return {
+      format: metadata.format,
       width: metadata.width,
       height: metadata.height,
-      format: metadata.format,
-      size: (await fs.promises.stat(imagePath)).size,
-      hasAlpha: metadata.hasAlpha,
-      isAnimated: metadata.pages > 1
+      sizeInBytes: stats.size,
+      sizeInMB: stats.size / (1024 * 1024),
+      aspectRatio: metadata.width / metadata.height
     };
   } catch (error) {
-    console.error('Error extracting image metadata:', error);
+    console.error('Image metadata extraction error:', error);
     throw error;
   }
 }

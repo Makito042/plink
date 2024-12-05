@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import userRoutes from './routes/users.js';
 import vendorRoutes from './routes/vendor.js';
+import storeRoutes from './routes/store.js';
 import SystemLog from './models/SystemLog.js';
 
 dotenv.config();
@@ -94,6 +95,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/vendor', vendorRoutes);
+app.use('/api/store', storeRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

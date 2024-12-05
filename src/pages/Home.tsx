@@ -1,39 +1,67 @@
 import { ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
+import { fetchStoreProducts } from '../services/productService';
 import { Product } from '../types';
 
-const featuredProducts: Product[] = [
+const categories = [
   {
-    id: '1',
-    name: 'Vitamin C Complex',
-    price: 5000,
-    image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80',
-    category: 'Vitamins & Supplements',
-    description: 'High-quality Vitamin C supplement for immune support',
-    inStock: true,
+    name: 'Vitamins & Supplements',
+    path: '/category/vitamins',
+    icon: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80'
   },
   {
-    id: '2',
-    name: 'First Aid Kit',
-    price: 15000,
-    image: 'https://images.unsplash.com/photo-1603398938378-e54eab446dde?auto=format&fit=crop&q=80',
-    category: 'Personal Care',
-    description: 'Complete emergency first aid kit for home use',
-    inStock: true,
+    name: 'Personal Care',
+    path: '/category/personal-care',
+    icon: 'https://images.unsplash.com/photo-1603398938378-e54eab446dde?auto=format&fit=crop&q=80'
   },
   {
-    id: '3',
-    name: 'Pain Relief Gel',
-    price: 3500,
-    image: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&q=80',
-    category: 'Over-the-Counter',
-    description: 'Fast-acting pain relief gel for muscle aches',
-    inStock: true,
+    name: 'Medical Devices',
+    path: '/category/medical-devices',
+    icon: 'https://images.unsplash.com/photo-1584017911766-d451b3d0e843?auto=format&fit=crop&q=80'
   },
+  {
+    name: 'First Aid',
+    path: '/category/first-aid',
+    icon: 'https://images.unsplash.com/photo-1576765608689-c5bded4669f4?auto=format&fit=crop&q=80'
+  }
 ];
 
 export default function Home() {
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadFeaturedProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await fetchStoreProducts({
+          page: 1,
+          limit: 8,
+          // Optional: Add more filters like specific category
+        });
+        setFeaturedProducts(response.products);
+      } catch (err: any) {
+        console.error('Failed to load featured products:', err);
+        
+        // Handle specific authentication errors
+        if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+          // Redirect to login or handle authentication
+          console.warn('Authentication required to fetch products');
+          // Optionally: window.location.href = '/login';
+        }
+        
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFeaturedProducts();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -69,53 +97,38 @@ export default function Home() {
             <ArrowRight className="ml-1 w-4 h-4" />
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {featuredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="text-center py-8">Loading products...</div>
+        ) : error ? (
+          <div className="text-center text-red-500 py-8">Error: {error}</div>
+        ) : featuredProducts.length === 0 ? (
+          <div className="text-center py-8">No products found</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {featuredProducts.map((product) => (
+              <ProductCard key={product.id || product._id} product={product} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Categories */}
       <section className="max-w-7xl mx-auto px-4 py-12">
         <h2 className="text-2xl font-bold mb-8">Shop by Category</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[
-            {
-              name: 'Vitamins & Supplements',
-              image: 'https://images.unsplash.com/photo-1584017911766-d451b3d0e843?auto=format&fit=crop&q=80',
-              path: '/category/vitamins',
-            },
-            {
-              name: 'Personal Care',
-              image: 'https://images.unsplash.com/photo-1576426863848-c21f53c60b19?auto=format&fit=crop&q=80',
-              path: '/category/personal-care',
-            },
-            {
-              name: 'Over-the-Counter',
-              image: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&q=80',
-              path: '/category/otc',
-            },
-            {
-              name: 'Medical Devices',
-              image: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&q=80',
-              path: '/category/medical-devices',
-            },
-          ].map((category) => (
+          {categories.map((category) => (
             <Link
               key={category.name}
               to={category.path}
               className="relative rounded-lg overflow-hidden group"
             >
               <img
-                src={category.image}
+                src={category.icon}
                 alt={category.name}
                 className="w-full h-48 object-cover transition-transform group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-                <h3 className="text-white text-xl font-semibold text-center">
-                  {category.name}
-                </h3>
+                <h3 className="text-white text-xl font-semibold text-center">{category.name}</h3>
               </div>
             </Link>
           ))}

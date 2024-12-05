@@ -27,7 +27,9 @@ export default function Header() {
             <Link to="/about" className="hover:text-[#66cc66]">About</Link>
             <div className="relative group">
               <button className="hover:text-[#66cc66]">Categories</button>
-              <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden group-hover:block">
+              <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 
+                opacity-0 invisible transition-all duration-300 delay-500 
+                group-hover:opacity-100 group-hover:visible">
                 {/* Add your category links here */}
                 <Link to="/category/medicines" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Medicines</Link>
                 <Link to="/category/equipment" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Medical Equipment</Link>

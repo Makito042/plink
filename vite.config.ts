@@ -14,13 +14,14 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://plink-backend.onrender.com',
+        target: 'http://localhost:5001',  // Local backend port
         changeOrigin: true,
-        secure: false
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, '')  // Remove /api prefix
       }
     },
     cors: {
-      origin: ['https://plink-backend.onrender.com', 'http://localhost:5173'],
+      origin: ['http://localhost:5001', 'http://localhost:5173'],
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization']

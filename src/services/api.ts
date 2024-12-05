@@ -437,3 +437,91 @@ export async function getVendorStats(): Promise<VendorStats> {
     throw new Error('Failed to fetch vendor stats. Please try again.');
   }
 }
+
+export async function fetchStoreProducts(params: {
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  page?: number;
+  limit?: number;
+}): Promise<{
+  products: Product[];
+  totalProducts: number;
+  totalPages: number;
+  currentPage: number;
+}> {
+  try {
+    console.log('🛒 Fetching Store Products with Params:', {
+      category: params.category,
+      minPrice: params.minPrice,
+      maxPrice: params.maxPrice,
+      page: params.page || 1,
+      limit: params.limit || 20
+    });
+
+    // Ensure token is sent with the request
+    const token = localStorage.getItem('token');
+    console.log('🔐 Token Details:', {
+      tokenPresent: !!token,
+      tokenLength: token?.length,
+      tokenFirstChars: token?.substring(0, 10) + '...'
+    });
+
+    if (!token) {
+      console.warn('No authentication token found. Attempting to fetch products without authentication.');
+    }
+
+    const response = await api.get('/vendor/store/products', { 
+      params: {
+        ...params,
+        page: params.page || 1,
+        limit: params.limit || 20
+      },
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+
+    console.log('🎉 Store Products Fetched Successfully:', {
+      totalProducts: response.data.totalProducts,
+      totalPages: response.data.totalPages,
+      currentPage: response.data.currentPage,
+      productsCount: response.data.products.length
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Error Fetching Store Products:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        params: error.config?.params
+      }
+    });
+
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('Server Response Error:', {
+        data: error.response.data,
+        status: error.response.status,
+        headers: error.response.headers
+      });
+
+      throw new Error(
+        error.response.data?.message || 
+        'Failed to fetch products. Server responded with an error.'
+      );
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('No Response Received:', error.request);
+      throw new Error('No response received from the server. Please check your network connection.');
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('Request Setup Error:', error.message);
+      throw new Error('Failed to fetch products. Please try again.');
+    }
+  }
+}

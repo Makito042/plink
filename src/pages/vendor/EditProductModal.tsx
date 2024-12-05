@@ -125,8 +125,31 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
     setNewImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  const validateForm = () => {
+    const requiredFields = ['name', 'price', 'category', 'stock'];
+    const missingFields = requiredFields.filter(field => !formData[field]);
+
+    if (missingFields.length > 0) {
+      setError(`Please fill in the following fields: ${missingFields.join(', ')}`);
+      return false;
+    }
+
+    if (parseFloat(formData.price) <= 0) {
+      setError('Price must be greater than 0');
+      return false;
+    }
+
+    if (parseInt(formData.stock) < 0) {
+      setError('Stock cannot be negative');
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
     setLoading(true);
     setError('');
 
@@ -161,13 +184,13 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
   };
 
   const categories = [
-    'Electronics',
-    'Clothing',
-    'Books',
-    'Home & Garden',
-    'Sports',
-    'Beauty',
-    'Toys',
+    'Medications',
+    'Supplements',
+    'Personal Care',
+    'Medical Devices',
+    'First Aid',
+    'Hygiene',
+    'Baby Care',
     'Other'
   ];
 
